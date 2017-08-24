@@ -1,14 +1,21 @@
-.PHONY: all test
-all: int.so reader.out
+.PHONY: all tests run-tests
+all: lpuvfs.so tests
 
-int.so: int.c
-	gcc -shared -fPIC -g int.c -o int.so
+vfs.o: vfs.c
+	gcc -g -c vfs.c -o vfs.o
 
-reader.out:
-	gcc -g reader.c -o reader.out
+int.o: int.c
+	gcc -g -c int.c -o int.o
 
-test: reader.out
-	LD_PRELOAD=$(PWD)/int.so ./reader.out /fake/test
+lpuvfs.so: int.o vfs.o
+	gcc -shared -fPIC -g int.o vfs.o -o lpuvfs.so
+
+tests: open.c fopen.c
+	gcc -g open.c -o open.out
+	gcc -g fopen.c -o fopen.out
+
+run-tests: tests lpuvfs.so
+	LD_PRELOAD=$(PWD)/lpuvfs.so ./open.out /fake/test
 
 clean:
-	rm *.so *.out
+	rm *.so *.out *.o
