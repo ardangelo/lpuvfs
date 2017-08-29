@@ -1,21 +1,22 @@
 .PHONY: all tests run-tests
-all: lpuvfs.so tests
+
+TEST_SRCS := $(wildcard tests/*.c)
+TESTS := $(TEST_SRCS:.c=.out)
+
+all: lpuvfs.so $(TESTS)
 
 vfs.o: vfs.c
 	gcc -g -c vfs.c -o vfs.o
-
 int.o: int.c
 	gcc -g -c int.c -o int.o
-
 lpuvfs.so: int.o vfs.o
 	gcc -shared -fPIC -g int.o vfs.o -o lpuvfs.so
 
-tests: open.c fopen.c
-	gcc -g open.c -o open.out
-	gcc -g fopen.c -o fopen.out
-
-run-tests: tests lpuvfs.so
-	LD_PRELOAD=$(PWD)/lpuvfs.so ./open.out /fake/test
+%.out: %.c
+	gcc -g $< -o $@
+run-tests: $(TESTS) lpuvfs.so
+	LD_PRELOAD=$(PWD)/lpuvfs.so tests/open.out /fake/test
 
 clean:
-	rm *.so *.out *.o
+	rm *.so *.o
+	rm $(TESTS)
