@@ -12,13 +12,16 @@
 
 #include "vfs.h"
 
-char *membuf = NULL;
-size_t memsize = 0;
-int memfd = -1;
-FILE *memfp = NULL;
-const char *memname = "/faker";
+typedef struct _fake_file_t {
+	char *buf;
+	size_t size;
+	int fd;
+	FILE *fp;
+	const char *name;
+} fake_file_t;
 
-const char str[] = "tricked you!\n";
+const char str[] = "tricked you!";
+fake_file_t *ff = NULL;
 
 int should_fake(const char *pathname) {
 	return (!strncmp(pathname, "/fake/", 6));
@@ -27,56 +30,53 @@ int should_fake(const char *pathname) {
 /* fd functions */
 
 int is_fake_fd(int fd) {
-	return (memfd == fd);
+	return (ff->fd == fd);
 }
 
 int open_fake_fd(const char *pathname) {
-	if (membuf != NULL) {
+	if (ff != NULL) {
 		/* no multi-file support yet */
 		return -1;
 	}
+	ff = malloc(sizeof(fake_file_t));
+	ff->size = getpagesize();
+	ff->name = pathname;
+	ff->fd = shm_open(ff->name, O_CREAT | O_RDWR, 0777);
 
-	memsize = getpagesize();
-	memfd = shm_open(memname, O_CREAT | O_RDWR, 0777);
-
-	if (memfd > 0) {
-		ftruncate(memfd, memsize);
-		membuf = (char*)mmap(0, memsize, PROT_READ | PROT_WRITE, MAP_SHARED, memfd, 0);
-		strcpy(membuf, str);
+	if (ff->fd > 0) {
+		ftruncate(ff->fd, ff->size);
+		ff->buf = (char*)mmap(0, ff->size, PROT_READ | PROT_WRITE, MAP_SHARED, ff->fd, 0);
+		sprintf(ff->buf, "fd %d: %s\n", ff->fd, str);
 	}
 
-	return memfd;
+	return ff->fd;
 }
 
 int close_fake_fd(int fd) {
-	munmap(membuf, memsize);
-	shm_unlink(memname);
-	memfd = -1;
-	membuf = NULL;
-	memsize = 0;
+	munmap(ff->buf, ff->size);
+	shm_unlink(ff->name);
+	free(ff);
+	ff = NULL;
 	return 0;
 }
 
 /* FILE* functions */
 
 int is_fake_file(FILE *fp) {
-	return (memfp == fp);
+	return (ff->fp == fp);
 }
 
 FILE *open_fake_file(const char *path) {
-	if (membuf != NULL) {
-		/* no multi-file support yet */
-		return NULL;
-	}
-
-	memsize = getpagesize();
-	FILE *fp = fmemopen((void*)membuf, memsize, "w+");
-	fprintf(fp, "%s", str);
+	int fd = open_fake_fd(path);
+	FILE *fp = fdopen(fd, "w+");
+	fprintf(fp, "FILE* from fd %d: %s\n", fd, str);
 	rewind(fp);
 
 	return fp;
 }
 
 int close_fake_file(FILE *fp) {
-	fclose(fp);
+	fclose(ff->fp);
+	free(ff->buf);
+	close_fake_fd(ff->fd);
 }
