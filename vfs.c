@@ -12,6 +12,8 @@
 
 #include "vfs.h"
 
+#define MAX_FN 255
+
 typedef struct _fake_file_t {
 	char *buf;
 	size_t size;
@@ -20,8 +22,85 @@ typedef struct _fake_file_t {
 	const char *name;
 } fake_file_t;
 
+/* management functions */
+
+typedef struct _node_t {
+    fake_file_t ff;
+    struct _node_t *next;
+} node_t;
+
+node_t *head = NULL;
+node_t *tail = NULL;
+
+fake_file_t* new_ff() {
+    node_t *n = (node_t*)malloc(sizeof(node_t));
+    n->next = NULL;
+
+    if (head == NULL) {
+        head = n;
+    } else {
+        tail->next = n;
+    }
+
+    tail = n;
+
+    return &n->ff;
+}
+
+
+fake_file_t* lookup_name(const char* name) {
+    node_t* n = head;
+
+    for (node_t *n = head; n != NULL; n = n->next) {
+        if (!strncmp(n->ff.name, name, MAX_FN)) {
+            return &n->ff;
+        }
+    }
+
+    return NULL;
+}
+
+fake_file_t* lookup_fd(int fd) {
+    for (node_t *n = head; n != NULL; n = n->next) {
+        if (n->ff.fd == fd) {
+            return &n->ff;
+        }
+    }
+
+    return NULL;
+}
+
+fake_file_t* lookup_fp(const FILE* fp) {
+    for (node_t *n = head; n != NULL; n = n->next) {
+        if (n->ff.fp == fp) {
+            return &n->ff;
+        }
+    }
+
+    return NULL;
+}
+
+void delete_node(node_t* target) {
+    if (head == NULL) {
+        return;
+    }
+
+    node_t *prev = head;
+    for (node_t *n = head->next; n != NULL; n = n->next) {
+        if (n->next == target) {
+            if (prev != NULL) {
+                prev->next = n->next;
+            }
+            free(n);
+
+            return;
+        }
+    }
+
+    return;
+}
+
 const char str[] = "tricked you!";
-fake_file_t *ff = NULL;
 
 int should_fake(const char *pathname) {
 	return (!strncmp(pathname, "/fake/", 6));
@@ -30,15 +109,17 @@ int should_fake(const char *pathname) {
 /* fd functions */
 
 int is_fake_fd(int fd) {
-	return (ff->fd == fd);
+	return lookup_fd(fd) != NULL;
 }
 
 int open_fake_fd(const char *pathname) {
-	if (ff != NULL) {
-		/* no multi-file support yet */
-		return -1;
+	fake_file_t *ff = lookup_name(pathname);
+	if (ff == NULL) {
+	    ff = new_ff();
+	} else {
+	    return ff->fd;
 	}
-	ff = malloc(sizeof(fake_file_t));
+
 	ff->size = getpagesize();
 	ff->name = pathname;
 	ff->fd = shm_open(ff->name, O_CREAT | O_RDWR, 0777);
@@ -53,6 +134,11 @@ int open_fake_fd(const char *pathname) {
 }
 
 int close_fake_fd(int fd) {
+    fake_file_t *ff = lookup_fd(fd);
+	if (ff == NULL) {
+	    return -1;
+	}
+
 	munmap(ff->buf, ff->size);
 	shm_unlink(ff->name);
 	free(ff);
@@ -63,11 +149,16 @@ int close_fake_fd(int fd) {
 /* FILE* functions */
 
 int is_fake_file(FILE *fp) {
-	return (ff->fp == fp);
+	return lookup_fp(fp) != NULL;
 }
 
-FILE *open_fake_file(const char *path) {
-	int fd = open_fake_fd(path);
+FILE *open_fake_file(const char *pathname) {
+    fake_file_t *ff = lookup_name(pathname);
+	if (ff != NULL) {
+	    return ff->fp;
+	}
+
+	int fd = open_fake_fd(pathname);
 	FILE *fp = fdopen(fd, "w+");
 	fprintf(fp, "FILE* from fd %d: %s\n", fd, str);
 	rewind(fp);
@@ -76,6 +167,11 @@ FILE *open_fake_file(const char *path) {
 }
 
 int close_fake_file(FILE *fp) {
+    fake_file_t *ff = lookup_fp(fp);
+	if (ff == NULL) {
+	    return -1;
+	}
+
 	fclose(ff->fp);
 	free(ff->buf);
 	close_fake_fd(ff->fd);
