@@ -7,12 +7,14 @@ CFLAGS := -g -std=c99
 
 all: lpuvfs.so $(TESTS)
 
+ll.o: ll.c
+	gcc $(CFLAGS) -c ll.c -o ll.o
 vfs.o: vfs.c
 	gcc $(CFLAGS) -c vfs.c -o vfs.o
 int.o: int.c
 	gcc $(CFLAGS) -c int.c -o int.o
-lpuvfs.so: int.o vfs.o
-	gcc -shared -fPIC int.o vfs.o -o lpuvfs.so
+lpuvfs.so: int.o vfs.o ll.o
+	gcc -shared -fPIC int.o vfs.o ll.o -o lpuvfs.so
 
 %.out: %.c
 	gcc $(CFLAGS) $< -o $@
