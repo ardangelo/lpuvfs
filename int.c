@@ -24,9 +24,13 @@ typedef int (*orig_unlink_t)(const char *pathname);
 typedef int (*orig_close_t)(int fd);
 
 /* directory function types */
-typedef struct dirent* (*orig_readdir_t)(DIR *dirp);
+typedef int (*orig_closedir_t)(DIR *dirp);
 typedef DIR* (*orig_opendir_t)(const char *name);
-typedef DIR* (*orig_fdopendir_t)(int fd);
+typedef struct dirent* (*orig_readdir_t)(DIR *dirp);
+typedef int (*orig_readdir_r_t)(DIR *dirp, struct dirent *entry, struct dirent **result);
+typedef void (*orig_rewinddir_t)(DIR *dirp);
+typedef void (*orig_seekdir_t)(DIR *dirp, long int loc);
+typedef long int (*orig_telldir_t)(DIR *dirp);
 
 /* file info types */
 typedef int (*orig_stat_t)(const char *pathname, struct stat *statbuf);
@@ -34,7 +38,7 @@ typedef int (*orig_stat_t)(const char *pathname, struct stat *statbuf);
 /* fd functions */
 
 int open(const char *pathname, int flags, ...) {
-	if (should_fake(pathname)) {
+	if (should_fake_file(pathname)) {
 		return open_fake_fd(pathname);
 	}
 
@@ -80,7 +84,7 @@ typedef FILE *(*orig_freopen_t)(const char *path, const char *mode, FILE *stream
 typedef int (*orig_fclose_t)(FILE *fp);
 
 FILE *fopen(const char *path, const char *mode) {
-	if (should_fake(path)) {
+	if (should_fake_file(path)) {
 		return open_fake_file(path);
 	}
 
@@ -99,11 +103,12 @@ int fclose(FILE *fp) {
 
 
 /* directory functions */
-struct dirent* readdir(DIR *dirp) {
-	fprintf(stderr, "caught readdir\n");
 
-	orig_readdir_t orig_readdir = (orig_readdir_t)dlsym(RTLD_NEXT, "readdir");
-	return orig_readdir(dirp);
+int closedir(DIR *dirp) {
+	fprintf(stderr, "caught close\n");
+
+	orig_closedir_t orig_closedir = (orig_closedir_t)dlsym(RTLD_NEXT, "closedir");
+	return orig_closedir(dirp);
 }
 
 DIR* opendir(const char *name) {
@@ -113,11 +118,39 @@ DIR* opendir(const char *name) {
 	return orig_opendir(name);
 }
 
-DIR* fdopendir(int fd) {
-	fprintf(stderr, "caught fdopendir\n");
+struct dirent* readdir(DIR *dirp) {
+	fprintf(stderr, "caught readdir\n");
 
-	orig_fdopendir_t orig_fdopendir = (orig_fdopendir_t)dlsym(RTLD_NEXT, "fdopendir");
-	return orig_fdopendir(fd);
+	orig_readdir_t orig_readdir = (orig_readdir_t)dlsym(RTLD_NEXT, "readdir");
+	return orig_readdir(dirp);
+}
+
+int readdir_r(DIR *dirp, struct dirent *entry, struct dirent **result) {
+	fprintf(stderr, "caught readdir_r\n");
+
+	orig_readdir_r_t orig_readdir_r = (orig_readdir_r_t)dlsym(RTLD_NEXT, "readdir_r");
+	return orig_readdir_r(dirp, entry, result);
+}
+
+void rewinddir(DIR *dirp) {
+	fprintf(stderr, "caught rewinddir\n");
+
+	orig_rewinddir_t orig_rewinddir = (orig_rewinddir_t)dlsym(RTLD_NEXT, "rewinddir");
+	return orig_rewinddir(dirp);
+}
+
+void seekdir(DIR *dirp, long int loc) {
+	fprintf(stderr, "caught seekdir\n");
+
+	orig_seekdir_t orig_seekdir = (orig_seekdir_t)dlsym(RTLD_NEXT, "seekdir");
+	return orig_seekdir(dirp, loc);
+}
+
+long int telldir(DIR *dirp) {
+	fprintf(stderr, "caught telldir\n");
+
+	orig_telldir_t orig_telldir = (orig_telldir_t)dlsym(RTLD_NEXT, "telldir");
+	return orig_telldir(dirp);
 }
 
 /* file info functions */

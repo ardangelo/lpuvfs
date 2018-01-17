@@ -1,7 +1,8 @@
 #ifndef VFS_H_
 #define VFS_H_
 
-int should_fake(const char *pathname);
+int should_fake_file(const char *pathname);
+int should_fake_dir(const char *pathname);
 
 int is_fake_fd(int fd);
 int open_fake_fd(const char *pathname);
