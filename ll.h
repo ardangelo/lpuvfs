@@ -18,17 +18,22 @@ typedef struct _fake_file_t {
 	const char *name;
 } fake_file_t;
 
-typedef struct _node_t {
-    fake_file_t ff;
-    struct _node_t *next;
-} node_t;
-
 fake_file_t* new_ff();
+void unlink_ff(fake_file_t *ff);
 
 fake_file_t* lookup_name(const char* name);
-
 fake_file_t* lookup_fd(int fd);
-
 fake_file_t* lookup_fp(const FILE* fp);
+
+/* directory control */
+#include <dirent.h>
+
+typedef struct _fake_dir_t {
+	struct dirent *dirents;
+	struct dirent *cur;
+} fake_dir_t;
+
+fake_dir_t* lookup_dirp(const DIR* dirp);
+void unlink_dirp(DIR* dirp);
 
 #endif

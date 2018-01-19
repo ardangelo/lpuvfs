@@ -105,14 +105,16 @@ int fclose(FILE *fp) {
 /* directory functions */
 
 int closedir(DIR *dirp) {
-	fprintf(stderr, "caught close\n");
+	fprintf(stderr, "caught closedir\n");
 
 	orig_closedir_t orig_closedir = (orig_closedir_t)dlsym(RTLD_NEXT, "closedir");
 	return orig_closedir(dirp);
 }
 
 DIR* opendir(const char *name) {
-	fprintf(stderr, "caught opendir\n");
+	if (should_fake_dir(name)) {
+		
+	}
 
 	orig_opendir_t orig_opendir = (orig_opendir_t)dlsym(RTLD_NEXT, "opendir");
 	return orig_opendir(name);

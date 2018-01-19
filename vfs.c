@@ -36,11 +36,12 @@ char* generate_file_contents(const char *pathname) {
 	return full;
 }
 
-struct dirent* generate_folder_contents(const char *pathname) {
-	// call out to client to create list of files (with attributes?)
-	// use this to create stat'able information and place into info table
-	// use that in turn to create fake inodes and from that fake dirents
-	// return this list of dirents
+char** generate_folder_contents(const char *pathname) {
+	char **res = malloc(sizeof(char*[3]));
+	res[0] = "file1";
+	res[1] = "file2";
+	res[2] = NULL;
+	return res;
 }
 
 /* fd functions */
@@ -80,7 +81,7 @@ int close_fake_fd(int fd) {
 
 	munmap(ff->buf, ff->size);
 	shm_unlink(ff->name);
-	free(ff);
+	unlink_ff(ff);
 	ff = NULL;
 	return 0;
 }
@@ -116,4 +117,26 @@ int close_fake_file(FILE *fp) {
 	fclose(ff->fp);
 	free(ff->buf);
 	close_fake_fd(ff->fd);
+}
+
+/* directory functions */
+
+int is_fake_dir(DIR *dirp) {
+	return lookup_dirp(dirp) != NULL;
+}
+
+DIR *open_fake_dir(const char *pathname) {
+	return NULL;
+}
+
+struct dirent *read_fake_dir(DIR *dirp) {
+	return NULL;
+}
+
+void rewind_fake_dir(DIR *dirp) {
+	return;
+}
+
+int close_fake_dir(DIR *dirp) {
+	return -1;
 }
