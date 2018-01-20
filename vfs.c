@@ -181,6 +181,8 @@ int close_fake_dir(DIR *dirp) {
 	}
 	free(fd->dirents);
 	free(fd);
+
+	return 0;
 }
 
 
