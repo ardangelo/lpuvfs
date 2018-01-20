@@ -17,11 +17,15 @@ int close_fake_file(FILE *fp);
 
 int should_fake_dir(const char *pathname);
 
-int is_fake_dir(DIR *dirp);
+int is_fake_dirp(DIR *dirp);
 
 DIR *open_fake_dir(const char *pathname);
 struct dirent *read_fake_dir(DIR *dirp);
 void rewind_fake_dir(DIR *dirp);
 int close_fake_dir(DIR *dirp);
+
+/* stat functions */
+
+void fill_statbuf(struct stat *statbuf, int is_dir);
 
 #endif
