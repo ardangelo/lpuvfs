@@ -40,4 +40,23 @@ void unlink_fd(fake_dir_t *dirp);
 fake_dir_t* lookup_dirname(const char *pathname);
 fake_dir_t* lookup_dirp(const DIR *dirp);
 
+/* generators */
+
+typedef struct _file_gen_t {
+	const char *pathname;
+	char* (*gen)(const char*);
+} file_gen_t;
+
+file_gen_t* new_file_gen();
+file_gen_t* lookup_file_gen(const char *pathname);
+
+typedef struct _dir_gen_t {
+	const char *pathname;
+	char** (*gen)(const char*);
+} dir_gen_t;
+
+dir_gen_t* new_dir_gen();
+dir_gen_t* lookup_dir_gen(const char *pathname);
+
+
 #endif

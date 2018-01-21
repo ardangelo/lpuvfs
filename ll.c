@@ -11,6 +11,8 @@ typedef struct _node_t {
 	union _entry {
 		fake_file_t f;
 		fake_dir_t d;
+		file_gen_t fg;
+		dir_gen_t dg;
 	} entry;
 	struct _node_t *next;
 } node_t;
@@ -22,6 +24,8 @@ typedef struct _list_t {
 
 list_t *file_list = NULL;
 list_t *dir_list = NULL;
+list_t *file_gen_list = NULL;
+list_t *dir_gen_list = NULL;
 
 /* list manipulation */
 
@@ -161,4 +165,42 @@ fake_dir_t* lookup_dirp(const DIR *dirp) {
 
 void unlink_fd(fake_dir_t *fd) {
 	delete_node(dir_list, (node_t*)fd);
+}
+
+/* generators */
+
+file_gen_t* new_file_gen() {
+	return (file_gen_t*)new_node(&file_gen_list);
+}
+
+file_gen_t* lookup_file_gen(const char *pathname) {
+	if (file_gen_list == NULL) {
+		return NULL;
+	}
+
+	for (node_t *n = file_gen_list->h; n != NULL; n = n->next) {
+		const char *pre = n->entry.fg.pathname;
+		if (!strncmp(pre, pathname, strlen(pre))) {
+			return &n->entry.fg;
+		}
+	}
+
+	return NULL;
+}
+
+dir_gen_t* new_dir_gen() {
+	return (dir_gen_t*)new_node(&dir_gen_list);
+}
+
+dir_gen_t* lookup_dir_gen(const char *pathname) {
+	if (dir_gen_list == NULL) {
+		return NULL;
+	}
+
+	for (node_t *n = dir_gen_list->h; n != NULL; n = n->next) {
+		const char *pre = n->entry.dg.pathname;
+		if (!strncmp(pre, pathname, strlen(pre))) {
+			return &n->entry.dg;
+		}
+	}
 }

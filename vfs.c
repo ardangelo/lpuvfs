@@ -11,38 +11,9 @@
 /* file control */
 #include <fcntl.h>
 
+#include "gens.h"
 #include "ll.h"
 #include "vfs.h"
-
-/* implementation eventually delegated to the client program */
-
-int should_fake_file(const char *pathname) {
-	return (!strncmp(pathname, "/fake/", 6)) && (pathname[strlen(pathname) - 1] != '/');
-}
-
-int should_fake_dir(const char *pathname) {
-	return (!strncmp(pathname, "/fake/", 6)) && (pathname[strlen(pathname) - 1] == '/');
-}
-
-char* generate_file_contents(const char *pathname) {
-	// no asprintf in this QNX :(
-	const char fmt_str_1[] = "tricked you! `";
-	const char fmt_str_2[] = "` doesn't exist!";
-	char *full = malloc(strlen(fmt_str_1) + strlen(fmt_str_2) + strlen(pathname) + 1);
-	strcpy(full, fmt_str_1);
-	strcpy(full + strlen(fmt_str_1), pathname);
-	strcpy(full + strlen(fmt_str_1) + strlen(pathname), fmt_str_2);
-
-	return full;
-}
-
-char** generate_folder_contents(const char *pathname) {
-	char **res = (char**)malloc(3 * sizeof(char*));
-	res[0] = strdup("file1");
-	res[1] = strdup("file2");
-	res[2] = NULL;
-	return res;
-}
 
 /* fd functions */
 
@@ -59,7 +30,7 @@ int open_fake_fd(const char *pathname) {
 	}
 
 	ff->pathname = pathname;
-	ff->fd = shm_open(ff->pathname, O_CREAT | O_RDWR, 0555);
+	ff->fd = shm_open(ff->pathname, O_CREAT | O_RDWR, 0777);
 
 	if (ff->fd > 0) {
 		char *contents = generate_file_contents(pathname);
@@ -133,7 +104,7 @@ DIR* open_fake_dir(const char *pathname) {
 		fd = new_fd();
 
 		// fill in the dirents
-		char **contents = generate_folder_contents(pathname);
+		char **contents = generate_dir_contents(pathname);
 		size_t numents = 3; // ., .., NULL terminator
 		for (char **p = contents; *p != NULL; p++, numents++);
 		fd->dirents = (struct dirent **)malloc(numents * sizeof(struct dirent *));

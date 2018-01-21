@@ -3,8 +3,6 @@
 
 /* file functions */
 
-int should_fake_file(const char *pathname);
-
 int is_fake_fd(int fd);
 int open_fake_fd(const char *pathname);
 int close_fake_fd(int fd);
@@ -14,8 +12,6 @@ FILE *open_fake_file(const char *path);
 int close_fake_file(FILE *fp);
 
 /* dir functions */
-
-int should_fake_dir(const char *pathname);
 
 int is_fake_dirp(DIR *dirp);
 
