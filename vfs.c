@@ -58,15 +58,16 @@ int open_fake_fd(const char *pathname) {
 		return ff->fd;
 	}
 
-	ff->size = getpagesize();
 	ff->pathname = pathname;
-	ff->fd = shm_open(ff->pathname, O_CREAT | O_RDWR, 0777);
+	ff->fd = shm_open(ff->pathname, O_CREAT | O_RDWR, 0555);
 
 	if (ff->fd > 0) {
+		char *contents = generate_file_contents(pathname);
+		ff->size = strlen(contents);
+
 		ftruncate(ff->fd, ff->size);
 		ff->buf = (char*)mmap(0, ff->size, PROT_READ | PROT_WRITE, MAP_SHARED, ff->fd, 0);
-		char *contents = generate_file_contents(pathname);
-		sprintf(ff->buf, "fd %d: %s\n", ff->fd, contents);
+		sprintf(ff->buf, "%s\n", contents);
 		free(contents);
 	}
 
@@ -79,6 +80,7 @@ int close_fake_fd(int fd) {
 		return -1;
 	}
 
+	/* clean up the memory mappings */
 	munmap(ff->buf, ff->size);
 	shm_unlink(ff->pathname);
 	unlink_ff(ff);
@@ -101,7 +103,7 @@ FILE* open_fake_file(const char *pathname) {
 	int fd = open_fake_fd(pathname);
 	FILE *fp = fdopen(fd, "w+");
 	char* contents = generate_file_contents(pathname);
-	fprintf(fp, "FILE* from fd %d: %s\n", fd, contents);
+	fprintf(fp, "%s\n", contents);
 	free(contents);
 	rewind(fp);
 
