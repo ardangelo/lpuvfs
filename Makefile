@@ -10,16 +10,14 @@ CFLAGS := -g -std=c99
 
 all: $(SOBJS)
 
-gens.o: gens.c
-	gcc $(CFLAGS) -c gens.c -o gens.o
 int.o: int.c
 	gcc $(CFLAGS) -c int.c -o int.o
 ll.o: ll.c
 	gcc $(CFLAGS) -c ll.c -o ll.o
 vfs.o: vfs.c
 	gcc $(CFLAGS) -c vfs.c -o vfs.o
-lpuvfs.so: gens.o int.o ll.o vfs.o
-	gcc -shared -fPIC gens.o int.o ll.o vfs.o -o lpuvfs.so
+lpuvfs.so: int.o ll.o vfs.o
+	gcc -shared -fPIC int.o ll.o vfs.o -o lpuvfs.so
 
 client.o: client.c
 	gcc $(CFLAGS) -c client.c -o client.o

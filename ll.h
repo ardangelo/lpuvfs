@@ -8,7 +8,7 @@
 /* file control */
 #include <fcntl.h>
 
-#define MAX_FN 48
+#include "lpuvfs.h"
 
 typedef struct _fake_file_t {
 	const char *pathname;
@@ -42,21 +42,15 @@ fake_dir_t* lookup_dirp(const DIR *dirp);
 
 /* generators */
 
-typedef struct _file_gen_t {
+typedef struct _fs_gen_t {
 	const char *pathname;
-	char* (*gen)(const char*);
-} file_gen_t;
+	char* (*file_gen)(const char*);
+	record_t* (*dir_gen)(const char*);
+	rec_type_t (*type_gen)(const char*);
+} fs_gen_t;
 
-file_gen_t* new_file_gen();
-file_gen_t* lookup_file_gen(const char *pathname);
+fs_gen_t* new_fs_gen();
 
-typedef struct _dir_gen_t {
-	const char *pathname;
-	char** (*gen)(const char*);
-} dir_gen_t;
-
-dir_gen_t* new_dir_gen();
-dir_gen_t* lookup_dir_gen(const char *pathname);
-
+fs_gen_t* lookup_fs_gen(const char *pathname);
 
 #endif

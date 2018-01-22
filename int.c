@@ -15,6 +15,8 @@
 
 #include "vfs.h"
 
+#define DEBUG 0
+
 /* file function types */
 typedef int (*orig_open_t)(const char *pathname, int flags, ...);
 typedef int (*orig_close_t)(int fd);
@@ -35,8 +37,12 @@ typedef int (*orig_lstat_t)(const char *pathname, struct stat *statbuf);
 /* fd functions */
 
 int open(const char *pathname, int flags, ...) {
-	if (should_fake_file(pathname)) {
-		return open_fake_fd(pathname);
+	if (DEBUG) fprintf(stderr, "caught %s\n", __func__);
+	static char fixed_path[MAX_PATH];
+	canonicalize(pathname, fixed_path);
+
+	if (should_fake_file(fixed_path)) {
+		return open_fake_fd(fixed_path);
 	}
 
 	static orig_open_t orig_open = NULL;
@@ -67,22 +73,28 @@ typedef FILE *(*orig_fopen_t)(const char *path, const char *mode);
 typedef FILE *(*orig_freopen_t)(const char *path, const char *mode, FILE *stream);
 typedef int (*orig_fclose_t)(FILE *fp);
 
-FILE *fopen(const char *path, const char *mode) {
-	if (should_fake_file(path)) {
-		return open_fake_file(path);
+FILE *fopen(const char *pathname, const char *mode) {
+	if (DEBUG) fprintf(stderr, "caught %s\n", __func__);
+	static char fixed_path[MAX_PATH];
+	canonicalize(pathname, fixed_path);
+
+	if (should_fake_file(fixed_path)) {
+		return open_fake_file(fixed_path);
 	}
 
 	static orig_fopen_t orig_fopen = NULL;
 	if (orig_fopen == NULL) {
 		orig_fopen = (orig_fopen_t)dlsym(RTLD_NEXT, "fopen");
 	}
-	return orig_fopen(path, mode);
+	return orig_fopen(pathname, mode);
 }
-FILE *fopen64(const char *path, const char *mode) {
-	return fopen(path, mode);
+FILE *fopen64(const char *pathname, const char *mode) {
+	return fopen(pathname, mode);
 }
 
 int fclose(FILE *fp) {
+	if (DEBUG) fprintf(stderr, "caught %s\n", __func__);
+
 	if (is_fake_file(fp)) {
 		return close_fake_file(fp);
 	}
@@ -98,6 +110,8 @@ int fclose(FILE *fp) {
 /* directory functions */
 
 int closedir(DIR *dirp) {
+	if (DEBUG) fprintf(stderr, "caught %s\n", __func__);
+
 	if (is_fake_dirp(dirp)) {
 		return close_fake_dir(dirp);
 	}
@@ -109,19 +123,25 @@ int closedir(DIR *dirp) {
 	return orig_closedir(dirp);
 }
 
-DIR* opendir(const char *name) {
-	if (should_fake_dir(name)) {
-		return (DIR*)open_fake_dir(name);
+DIR* opendir(const char *pathname) {
+	if (DEBUG) fprintf(stderr, "caught %s\n", __func__);
+	static char fixed_path[MAX_PATH];
+	canonicalize(pathname, fixed_path);
+
+	if (should_fake_dir(fixed_path)) {
+		return (DIR*)open_fake_dir(fixed_path);
 	}
 
 	static orig_opendir_t orig_opendir = NULL;
 	if (orig_opendir == NULL) {
 		orig_opendir = (orig_opendir_t)dlsym(RTLD_NEXT, "opendir");
 	}
-	return orig_opendir(name);
+	return orig_opendir(pathname);
 }
 
 struct dirent* readdir(DIR *dirp) {
+	if (DEBUG) fprintf(stderr, "caught %s\n", __func__);
+
 	if (is_fake_dirp(dirp)) {
 		return read_fake_dir(dirp);
 	}
@@ -137,7 +157,7 @@ struct dirent* readdir64(DIR *dirp) {
 }
 
 int readdir_r(DIR *dirp, struct dirent *entry, struct dirent **result) {
-	fprintf(stderr, "caught readdir_r\n");
+	if (DEBUG) fprintf(stderr, "caught %s\n", __func__);
 
 	static orig_readdir_r_t orig_readdir_r = NULL;
 	if (orig_readdir_r == NULL) {
@@ -147,6 +167,8 @@ int readdir_r(DIR *dirp, struct dirent *entry, struct dirent **result) {
 }
 
 void rewinddir(DIR *dirp) {
+	if (DEBUG) fprintf(stderr, "caught %s\n", __func__);
+
 	if (is_fake_dirp(dirp)) {
 		return rewind_fake_dir(dirp);
 	}
@@ -159,7 +181,7 @@ void rewinddir(DIR *dirp) {
 }
 
 void seekdir(DIR *dirp, long int loc) {
-	fprintf(stderr, "caught seekdir\n");
+	if (DEBUG) fprintf(stderr, "caught %s\n", __func__);
 
 	static orig_seekdir_t orig_seekdir = NULL;
 	if (orig_seekdir == NULL) {
@@ -169,7 +191,7 @@ void seekdir(DIR *dirp, long int loc) {
 }
 
 long int telldir(DIR *dirp) {
-	fprintf(stderr, "caught telldir\n");
+	if (DEBUG) fprintf(stderr, "caught %s\n", __func__);
 
 	static orig_telldir_t orig_telldir = NULL;
 	if (orig_telldir == NULL) {
@@ -181,12 +203,13 @@ long int telldir(DIR *dirp) {
 /* file info functions */
 
 int stat(const char *pathname, struct stat *statbuf) {
-	if (should_fake_file(pathname)) {
-		fill_statbuf(statbuf, 0);
-		return 0;
-	} else {
-		fill_statbuf(statbuf, 1);
-		return 0;
+	if (DEBUG) fprintf(stderr, "caught %s\n", __func__);
+	static char fixed_path[MAX_PATH];
+	canonicalize(pathname, fixed_path);
+
+	record_t rec = create_fake_record(fixed_path);
+	if (rec.type != NO_REC) {
+		return fill_statbuf(statbuf, rec);
 	}
 
 	static orig_stat_t orig_stat = NULL;
@@ -200,14 +223,17 @@ int stat64(const char *pathname, struct stat *statbuf) {
 }
 
 int lstat(const char *pathname, struct stat *statbuf) {
-	if (should_fake_file(pathname)) {
-		fill_statbuf(statbuf, 0);
-		return 0;
-	} else {
-		fill_statbuf(statbuf, 1);
-		return 0;
+	if (DEBUG) fprintf(stderr, "caught %s\n", __func__);
+	static char fixed_path[MAX_PATH];
+	canonicalize(pathname, fixed_path);
+
+	record_t rec = create_fake_record(fixed_path);
+	if (rec.type != NO_REC) {
+		if (DEBUG) fprintf(stderr, "record for %s\n", pathname);
+		return fill_statbuf(statbuf, rec);
 	}
 
+	if (DEBUG) fprintf(stderr, "no record for %s\n", pathname);
 	static orig_lstat_t orig_lstat = NULL;
 	if (orig_lstat == NULL) {
 		orig_lstat = (orig_lstat_t)dlsym(RTLD_NEXT, "lstat");

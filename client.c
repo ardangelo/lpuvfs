@@ -4,6 +4,23 @@
 
 #include "lpuvfs.h"
 
+#define DEBUG 0
+
+rec_type_t generate_type(const char *pathname) {
+	if (DEBUG) fprintf(stderr, "client: generate type for %s: ", pathname);
+	if (!strcmp("/fake", pathname) || !strcmp("/fake/dir1", pathname) ||
+		!strcmp("/fake/.", pathname) || !strcmp("/fake/dir1/.", pathname)) {
+		if (DEBUG) fprintf(stderr, "directory\n");
+		return DIR_REC;
+	} else if (!strcmp("/fake/file1", pathname)) {
+		if (DEBUG) fprintf(stderr, "file\n");
+		return FILE_REC;
+	}
+
+	if (DEBUG) fprintf(stderr, "none\n");
+	return NO_REC;
+}
+
 char* generate_file_contents(const char *pathname) {
 	const char fmt_str_1[] = "tricked you! `";
 	const char fmt_str_2[] = "` doesn't exist!";
@@ -15,17 +32,27 @@ char* generate_file_contents(const char *pathname) {
 	return full;
 }
 
-char** generate_dir_contents(const char *pathname) {
-	char **res = (char**)malloc(3 * sizeof(char*));
-	res[0] = strdup("file1");
-	res[1] = strdup("file2");
-	res[2] = NULL;
+record_t* generate_dir_contents(const char *pathname) {
+	if (strcmp("/fake", pathname)) {
+		record_t *res = (record_t*)malloc(sizeof(record_t));
+		res[0].name = NULL;
+		return res;
+	}
+
+	/* dir requested is root */
+	record_t *res = (record_t*)malloc(3 * sizeof(record_t));
+	res[0].name = strdup("file1");
+	res[0].size = 4;
+	res[0].type = FILE_REC;
+	res[1].name = strdup("dir1");
+	res[1].size = 4;
+	res[1].type = DIR_REC;
+	res[2].name = NULL;
 	return res;
 }
 
 static void init() __attribute__((constructor));
 
 void init() {
-	register_file_generator("/fake/", generate_file_contents);
-	register_dir_generator("/fake/", generate_dir_contents);
+	register_fs_gen("/fake", &generate_file_contents, &generate_dir_contents, &generate_type);
 }
