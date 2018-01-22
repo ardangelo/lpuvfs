@@ -14,10 +14,12 @@ int.o: int.c
 	gcc $(CFLAGS) -c int.c -o int.o
 ll.o: ll.c
 	gcc $(CFLAGS) -c ll.c -o ll.o
+canon.o: canon.c
+	gcc $(CFLAGS) -c canon.c -o canon.o
 vfs.o: vfs.c
 	gcc $(CFLAGS) -c vfs.c -o vfs.o
-lpuvfs.so: int.o ll.o vfs.o
-	gcc -shared -fPIC int.o ll.o vfs.o -o lpuvfs.so
+lpuvfs.so: int.o ll.o canon.o vfs.o
+	gcc -shared -fPIC int.o ll.o canon.o vfs.o -o lpuvfs.so
 
 client.o: client.c
 	gcc $(CFLAGS) -c client.c -o client.o

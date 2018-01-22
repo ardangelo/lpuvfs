@@ -232,23 +232,3 @@ int fill_statbuf(struct stat *statbuf, record_t rec) {
 
 	return 0;
 }
-
-char* canonicalize(const char *pathname, char *buf) {
-	if (buf == NULL) {
-		buf = strdup(pathname);
-	} else {
-		strcpy(buf, pathname);
-	}
-
-	// mark out characters to delete via some sort of state machine
-
-	char *src = buf;
-	char *dst = buf;
-	while (*dst != '\0') {
-		*dst = *src++;
-		dst += (*dst != '\1');
-	}
-	*dst = '\0';
-
-	return buf;
-}
