@@ -34,9 +34,9 @@ run-cmd: $(SOBJS)
 	LD_PRELOAD=$(PRELOAD) $(CMD)	
 
 run-tests: $(SOBJS) $(TESTS)
-	LD_PRELOAD=$(PRELOAD) tests/open.out /fake/test1 /fake/test2
-	LD_PRELOAD=$(PRELOAD) tests/fopen.out /fake/test
-	LD_PRELOAD=$(PRELOAD) tests/dirlist.out /fake/
+	LD_PRELOAD=$(PRELOAD) tests/open.out /fake/file1
+	LD_PRELOAD=$(PRELOAD) tests/fopen.out /fake/file1
+	LD_PRELOAD=$(PRELOAD) tests/dirlist.out /fake
 
 clean:
 	rm *.so *.o

@@ -12,6 +12,9 @@ typedef struct _record_t {
 	rec_type_t type;
 } record_t;
 
-int register_fs_gen(const char *pathname, char* (*file_gen)(const char*), record_t* (*dir_gen)(const char*), rec_type_t (*type_gen)(const char*));
+int register_fs_gen(const char *pathname,
+                    char* (*file_gen)(const char*),
+                    record_t* (*dir_gen)(const char*),
+                    rec_type_t (*type_gen)(const char*));
 
 #endif

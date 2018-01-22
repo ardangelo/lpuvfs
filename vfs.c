@@ -239,7 +239,16 @@ char* canonicalize(const char *pathname, char *buf) {
 	} else {
 		strcpy(buf, pathname);
 	}
-	// TODO: remove trailing slash, dots, etc
+
+	// mark out characters to delete via some sort of state machine
+
+	char *src = buf;
+	char *dst = buf;
+	while (*dst != '\0') {
+		*dst = *src++;
+		dst += (*dst != '\1');
+	}
+	*dst = '\0';
 
 	return buf;
 }
