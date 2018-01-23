@@ -18,7 +18,7 @@ char* canonicalize(const char *pathname, char *buf) {
 
 	int up_level = 0;
 
-	for (int i = strlen(buf) - 1; i >= 0; i--) {
+	for (int i = strlen(buf); i >= 0; i--) {
 		switch (s) {
 			case seen_trailing_slash:
 				switch (buf[i]) {
@@ -81,9 +81,10 @@ char* canonicalize(const char *pathname, char *buf) {
 	char *dst = buf;
 	while (*src != '\0') {
 		if (*src == DEL_EOD) {
-			src++;
-			while ((*src != '\0') && (*src != '/') && (*src != DEL_EOD)) src++;
+			*dst = '\0';
+			do { src++; } while ((*src != '\0') && (*src != '/') && (*src != DEL_EOD));
 		} else if (*src == DEL_CHAR) {
+			*dst = '\0';
 			src++;
 		} else {
 			*dst = *src;
