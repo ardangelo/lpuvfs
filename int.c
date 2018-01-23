@@ -39,11 +39,15 @@ typedef int (*orig_stat_t)(const char *pathname, struct stat *statbuf);
 typedef int (*orig_lstat_t)(const char *pathname, struct stat *statbuf);
 
 /* original function addresses */
-
-orig_open_t orig_open = NULL;
-orig_close_t orig_close = NULL;
-orig_fopen_t orig_fopen = NULL;
-orig_fclose_t orig_fclose = NULL;
+int crash(void) {
+	fprintf(stderr, "called an uninitialized syscall pointer! (probably a dynamic loader problem)\n");
+	exit(1);
+	return 0;
+}
+orig_open_t orig_open = (orig_open_t)&crash;
+orig_close_t orig_close = (orig_close_t)&crash;
+orig_fopen_t orig_fopen = (orig_fopen_t)&crash;
+orig_fclose_t orig_fclose = (orig_fclose_t)&crash;
 orig_closedir_t orig_closedir = NULL;
 orig_opendir_t orig_opendir = NULL;
 orig_readdir_t orig_readdir = NULL;
@@ -54,23 +58,35 @@ orig_telldir_t orig_telldir = NULL;
 orig_chdir_t orig_chdir = NULL;
 orig_stat_t orig_stat = NULL;
 orig_lstat_t orig_lstat = NULL;
-int load_original_symbols() {
-	orig_open = (orig_open_t)dlsym(RTLD_NEXT, "open");
-	orig_close = (orig_close_t)dlsym(RTLD_NEXT, "close");
-	orig_fopen = (orig_fopen_t)dlsym(RTLD_NEXT, "fopen");
-	orig_fclose = (orig_fclose_t)dlsym(RTLD_NEXT, "fclose");
-	orig_closedir = (orig_closedir_t)dlsym(RTLD_NEXT, "closedir");
-	orig_opendir = (orig_opendir_t)dlsym(RTLD_NEXT, "opendir");
-	orig_readdir = (orig_readdir_t)dlsym(RTLD_NEXT, "readdir");
-	orig_readdir_r = (orig_readdir_r_t)dlsym(RTLD_NEXT, "readdir_r");
-	orig_rewinddir = (orig_rewinddir_t)dlsym(RTLD_NEXT, "rewinddir");
-	orig_seekdir = (orig_seekdir_t)dlsym(RTLD_NEXT, "seekdir");
-	orig_telldir = (orig_telldir_t)dlsym(RTLD_NEXT, "telldir");
-	orig_chdir = (orig_chdir_t)dlsym(RTLD_NEXT, "chdir");
-	orig_stat = (orig_stat_t)dlsym(RTLD_NEXT, "stat");
-	orig_lstat = (orig_lstat_t)dlsym(RTLD_NEXT, "lstat");
 
-	return 0;
+static void __attribute__ ((constructor)) _init() {
+	if (DEBUG) fprintf(stderr, "lpvfs.so init\n");
+
+	void *libc_handle = dlopen("libc.so.3", RTLD_LAZY | RTLD_LOCAL);
+	fprintf(stderr, "libc_handle: %p\n", libc_handle);
+	if (libc_handle == NULL) {
+		fprintf(stderr, "failed to load libc!\n");
+		exit(1);
+	}
+
+	orig_open = (orig_open_t)dlsym(libc_handle, "open");
+	orig_close = (orig_close_t)dlsym(libc_handle, "close");
+	orig_fopen = (orig_fopen_t)dlsym(libc_handle, "fopen");
+	orig_fclose = (orig_fclose_t)dlsym(libc_handle, "fclose");
+	orig_closedir = (orig_closedir_t)dlsym(libc_handle, "closedir");
+	orig_opendir = (orig_opendir_t)dlsym(libc_handle, "opendir");
+	orig_readdir = (orig_readdir_t)dlsym(libc_handle, "readdir");
+	orig_readdir_r = (orig_readdir_r_t)dlsym(libc_handle, "readdir_r");
+	orig_rewinddir = (orig_rewinddir_t)dlsym(libc_handle, "rewinddir");
+	orig_seekdir = (orig_seekdir_t)dlsym(libc_handle, "seekdir");
+	orig_telldir = (orig_telldir_t)dlsym(libc_handle, "telldir");
+	orig_chdir = (orig_chdir_t)dlsym(libc_handle, "chdir");
+	orig_stat = (orig_stat_t)dlsym(libc_handle, "stat");
+	orig_lstat = (orig_lstat_t)dlsym(libc_handle, "lstat");
+
+	dlclose(libc_handle);
+
+	if (DEBUG) fprintf(stderr, "lpvfs.so init completed\n");
 }
 
 /* fd functions */

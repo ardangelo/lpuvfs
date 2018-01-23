@@ -51,10 +51,7 @@ record_t* generate_dir_contents(const char *pathname) {
 	return res;
 }
 
-static void init() __attribute__((constructor));
-
-void init() {
+static void __attribute__((constructor)) _init() {
 	fprintf(stderr, "loading client\n");
-	load_original_symbols();
 	register_fs_gen("/fake", &generate_file_contents, &generate_dir_contents, &generate_type);
 }
