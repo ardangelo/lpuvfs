@@ -15,16 +15,21 @@
 
 #include "vfs.h"
 
-#define DEBUG 0
+#define DEBUG 1
 
 /* file function types */
 typedef int (*orig_open_t)(const char *pathname, int flags, ...);
 typedef int (*orig_close_t)(int fd);
 
+typedef FILE *(*orig_fopen_t)(const char *path, const char *mode);
+typedef FILE *(*orig_fopen64_t)(const char *path, const char *mode);
+typedef int (*orig_fclose_t)(FILE *fp);
+
 /* directory function types */
 typedef int (*orig_closedir_t)(DIR *dirp);
 typedef DIR* (*orig_opendir_t)(const char *name);
 typedef struct dirent* (*orig_readdir_t)(DIR *dirp);
+typedef struct dirent64* (*orig_readdir64_t)(DIR *dirp);
 typedef int (*orig_readdir_r_t)(DIR *dirp, struct dirent *entry, struct dirent **result);
 typedef void (*orig_rewinddir_t)(DIR *dirp);
 typedef void (*orig_seekdir_t)(DIR *dirp, long int loc);
@@ -32,7 +37,15 @@ typedef long int (*orig_telldir_t)(DIR *dirp);
 
 /* file info types */
 typedef int (*orig_stat_t)(const char *pathname, struct stat *statbuf);
+typedef int (*orig_stat64_t)(const char *pathname, struct stat64 *statbuf);
 typedef int (*orig_lstat_t)(const char *pathname, struct stat *statbuf);
+typedef int (*orig_lstat64_t)(const char *pathname, struct stat64 *statbuf);
+
+#define AUTOLOAD_ORIG(X) \
+	static orig_##X##_t orig_##X = NULL; \
+	if (orig_##X == NULL) { \
+		orig_##X = (orig_##X##_t)dlsym(RTLD_NEXT, #X); \
+	}
 
 /* fd functions */
 
@@ -45,33 +58,27 @@ int open(const char *pathname, int flags, ...) {
 		return open_fake_fd(fixed_path);
 	}
 
-	static orig_open_t orig_open = NULL;
-	if (orig_open == NULL) {
-		orig_open = (orig_open_t)dlsym(RTLD_NEXT, "open");
-	}
+	AUTOLOAD_ORIG(open);
 	return orig_open(pathname, flags);
 }
 int open64(const char *pathname, int flags, ...) {
+	if (DEBUG) fprintf(stderr, "caught %s\n", __func__);
+
 	return open(pathname, flags);
 }
 
 int close(int fd) {
+	if (DEBUG) fprintf(stderr, "caught %s\n", __func__);
+
 	if (is_fake_fd(fd)) {
 		return close_fake_fd(fd);
 	}
 
-	static orig_close_t orig_close = NULL;
-	if (orig_close == NULL) {
-		orig_close = (orig_close_t)dlsym(RTLD_NEXT, "close");
-	}
+	AUTOLOAD_ORIG(close);
 	return orig_close(fd);
 }
 
 /* FILE functions */
-
-typedef FILE *(*orig_fopen_t)(const char *path, const char *mode);
-typedef FILE *(*orig_freopen_t)(const char *path, const char *mode, FILE *stream);
-typedef int (*orig_fclose_t)(FILE *fp);
 
 FILE *fopen(const char *pathname, const char *mode) {
 	if (DEBUG) fprintf(stderr, "caught %s\n", __func__);
@@ -82,14 +89,21 @@ FILE *fopen(const char *pathname, const char *mode) {
 		return open_fake_file(fixed_path);
 	}
 
-	static orig_fopen_t orig_fopen = NULL;
-	if (orig_fopen == NULL) {
-		orig_fopen = (orig_fopen_t)dlsym(RTLD_NEXT, "fopen");
-	}
+	AUTOLOAD_ORIG(fopen);
 	return orig_fopen(pathname, mode);
 }
+
 FILE *fopen64(const char *pathname, const char *mode) {
-	return fopen(pathname, mode);
+	if (DEBUG) fprintf(stderr, "caught %s\n", __func__);
+	static char fixed_path[MAX_PATH];
+	canonicalize(pathname, fixed_path);
+
+	if (should_fake_file(fixed_path)) {
+		return open_fake_file(fixed_path);
+	}
+
+	AUTOLOAD_ORIG(fopen64);
+	return fopen64(pathname, mode);
 }
 
 int fclose(FILE *fp) {
@@ -99,10 +113,7 @@ int fclose(FILE *fp) {
 		return close_fake_file(fp);
 	}
 
-	static orig_fclose_t orig_fclose = NULL;
-	if (orig_fclose == NULL) {
-		orig_fclose = (orig_fclose_t)dlsym(RTLD_NEXT, "fclose");
-	}
+	AUTOLOAD_ORIG(fclose);
 	return orig_fclose(fp);
 }
 
@@ -116,10 +127,7 @@ int closedir(DIR *dirp) {
 		return close_fake_dir(dirp);
 	}
 
-	static orig_closedir_t orig_closedir = NULL;
-	if (orig_closedir == NULL) {
-		orig_closedir = (orig_closedir_t)dlsym(RTLD_NEXT, "closedir");
-	}
+	AUTOLOAD_ORIG(closedir);
 	return orig_closedir(dirp);
 }
 
@@ -132,10 +140,7 @@ DIR* opendir(const char *pathname) {
 		return (DIR*)open_fake_dir(fixed_path);
 	}
 
-	static orig_opendir_t orig_opendir = NULL;
-	if (orig_opendir == NULL) {
-		orig_opendir = (orig_opendir_t)dlsym(RTLD_NEXT, "opendir");
-	}
+	AUTOLOAD_ORIG(opendir);
 	return orig_opendir(pathname);
 }
 
@@ -146,23 +151,34 @@ struct dirent* readdir(DIR *dirp) {
 		return read_fake_dir(dirp);
 	}
 
-	static orig_readdir_t orig_readdir = NULL;
-	if (orig_readdir == NULL) {
-		orig_readdir = (orig_readdir_t)dlsym(RTLD_NEXT, "readdir");
-	}
+	AUTOLOAD_ORIG(readdir);
 	return orig_readdir(dirp);
 }
-struct dirent* readdir64(DIR *dirp) {
-	return readdir(dirp);
+
+int in_readdir64 = 0;
+struct dirent64* readdir64(DIR *dirp) {
+	if (DEBUG) fprintf(stderr, "caught %s\n", __func__);
+	if (in_readdir64 == 0) {
+		in_readdir64 = 1;
+	} else {
+		fprintf(stderr, "recursed on own readdir64!\n");
+		exit(1);
+	}
+
+	if (is_fake_dirp(dirp)) {
+		return read_fake_dir64(dirp);
+	}
+
+	AUTOLOAD_ORIG(readdir64);
+	struct dirent64* res = readdir64(dirp);
+	in_readdir64 = 0;
+	return res;
 }
 
 int readdir_r(DIR *dirp, struct dirent *entry, struct dirent **result) {
 	if (DEBUG) fprintf(stderr, "caught %s\n", __func__);
 
-	static orig_readdir_r_t orig_readdir_r = NULL;
-	if (orig_readdir_r == NULL) {
-		orig_readdir_r = (orig_readdir_r_t)dlsym(RTLD_NEXT, "readdir_r");
-	}
+	AUTOLOAD_ORIG(readdir_r);
 	return orig_readdir_r(dirp, entry, result);
 }
 
@@ -173,30 +189,21 @@ void rewinddir(DIR *dirp) {
 		return rewind_fake_dir(dirp);
 	}
 
-	static orig_rewinddir_t orig_rewinddir = NULL;
-	if (orig_rewinddir == NULL) {
-		orig_rewinddir = (orig_rewinddir_t)dlsym(RTLD_NEXT, "rewinddir");
-	}
+	AUTOLOAD_ORIG(rewinddir);
 	return orig_rewinddir(dirp);
 }
 
 void seekdir(DIR *dirp, long int loc) {
 	if (DEBUG) fprintf(stderr, "caught %s\n", __func__);
 
-	static orig_seekdir_t orig_seekdir = NULL;
-	if (orig_seekdir == NULL) {
-		orig_seekdir = (orig_seekdir_t)dlsym(RTLD_NEXT, "seekdir");
-	}
+	AUTOLOAD_ORIG(seekdir);
 	return orig_seekdir(dirp, loc);
 }
 
 long int telldir(DIR *dirp) {
 	if (DEBUG) fprintf(stderr, "caught %s\n", __func__);
 
-	static orig_telldir_t orig_telldir = NULL;
-	if (orig_telldir == NULL) {
-		orig_telldir = (orig_telldir_t)dlsym(RTLD_NEXT, "telldir");
-	}
+	AUTOLOAD_ORIG(telldir);
 	return orig_telldir(dirp);
 }
 
@@ -212,14 +219,22 @@ int stat(const char *pathname, struct stat *statbuf) {
 		return fill_statbuf(statbuf, rec);
 	}
 
-	static orig_stat_t orig_stat = NULL;
-	if (orig_stat == NULL) {
-		orig_stat = (orig_stat_t)dlsym(RTLD_NEXT, "stat");
-	}
+	AUTOLOAD_ORIG(stat);
 	return orig_stat(pathname, statbuf);
 }
-int stat64(const char *pathname, struct stat *statbuf) {
-	return stat(pathname, statbuf);
+
+int stat64(const char *pathname, struct stat64 *statbuf) {
+	if (DEBUG) fprintf(stderr, "caught %s\n", __func__);
+	static char fixed_path[MAX_PATH];
+	canonicalize(pathname, fixed_path);
+
+	record_t rec = create_fake_record(fixed_path);
+	if (rec.type != NO_REC) {
+		return fill_statbuf64(statbuf, rec);
+	}
+
+	AUTOLOAD_ORIG(stat64);
+	return stat64(pathname, statbuf);
 }
 
 int lstat(const char *pathname, struct stat *statbuf) {
@@ -229,17 +244,24 @@ int lstat(const char *pathname, struct stat *statbuf) {
 
 	record_t rec = create_fake_record(fixed_path);
 	if (rec.type != NO_REC) {
-		if (DEBUG) fprintf(stderr, "record for %s\n", pathname);
 		return fill_statbuf(statbuf, rec);
 	}
 
-	if (DEBUG) fprintf(stderr, "no record for %s\n", pathname);
-	static orig_lstat_t orig_lstat = NULL;
-	if (orig_lstat == NULL) {
-		orig_lstat = (orig_lstat_t)dlsym(RTLD_NEXT, "lstat");
-	}
+	AUTOLOAD_ORIG(lstat);
 	return orig_lstat(pathname, statbuf);
 }
-int lstat64(const char *pathname, struct stat *statbuf) {
-	return lstat(pathname, statbuf);
+
+int lstat64(const char *pathname, struct stat64 *statbuf) {
+	if (DEBUG) fprintf(stderr, "caught %s\n", __func__);
+	static char fixed_path[MAX_PATH];
+	canonicalize(pathname, fixed_path);
+
+	record_t rec = create_fake_record(fixed_path);
+	if (rec.type != NO_REC) {
+		return fill_statbuf64(statbuf, rec);
+	}
+
+
+	AUTOLOAD_ORIG(lstat64);
+	return lstat64(pathname, statbuf);
 }
