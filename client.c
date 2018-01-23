@@ -23,7 +23,7 @@ rec_type_t generate_type(const char *pathname) {
 
 char* generate_file_contents(const char *pathname) {
 	const char fmt_str_1[] = "tricked you! `";
-	const char fmt_str_2[] = "` doesn't exist!";
+	const char fmt_str_2[] = "` doesn't exist!\n";
 	char *full = malloc(strlen(fmt_str_1) + strlen(fmt_str_2) + strlen(pathname) + 1);
 	strcpy(full, fmt_str_1);
 	strcpy(full + strlen(fmt_str_1), pathname);
@@ -54,5 +54,7 @@ record_t* generate_dir_contents(const char *pathname) {
 static void init() __attribute__((constructor));
 
 void init() {
+	fprintf(stderr, "loading client\n");
+	load_original_symbols();
 	register_fs_gen("/fake", &generate_file_contents, &generate_dir_contents, &generate_type);
 }
