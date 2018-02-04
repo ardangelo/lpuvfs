@@ -15,7 +15,7 @@
 
 #include "vfs.h"
 
-#define DEBUG 1
+#define DEBUG 0
 
 /* file function types */
 typedef int (*orig_open_t)(const char *pathname, int flags, ...);
@@ -155,24 +155,15 @@ struct dirent* readdir(DIR *dirp) {
 	return orig_readdir(dirp);
 }
 
-int in_readdir64 = 0;
 struct dirent64* readdir64(DIR *dirp) {
 	if (DEBUG) fprintf(stderr, "caught %s\n", __func__);
-	if (in_readdir64 == 0) {
-		in_readdir64 = 1;
-	} else {
-		fprintf(stderr, "recursed on own readdir64!\n");
-		exit(1);
-	}
 
 	if (is_fake_dirp(dirp)) {
 		return read_fake_dir64(dirp);
 	}
 
 	AUTOLOAD_ORIG(readdir64);
-	struct dirent64* res = readdir64(dirp);
-	in_readdir64 = 0;
-	return res;
+	return orig_readdir64(dirp);
 }
 
 int readdir_r(DIR *dirp, struct dirent *entry, struct dirent **result) {

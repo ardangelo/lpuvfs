@@ -148,7 +148,6 @@ fake_dir_t* lookup_dirname(const char* name) {
 
 
 fake_dir_t* lookup_dirp(const DIR *dirp) {
-	fprintf(stderr, "lookup dirp %p\n", dirp);
 	if (dir_list == NULL) {
 		return NULL;
 	}
