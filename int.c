@@ -15,7 +15,7 @@
 
 #include "vfs.h"
 
-#define DEBUG 0
+#define DEBUG 1
 
 /* file function types */
 typedef int (*orig_open_t)(const char *pathname, int flags, ...);
@@ -103,7 +103,7 @@ FILE *fopen64(const char *pathname, const char *mode) {
 	}
 
 	AUTOLOAD_ORIG(fopen64);
-	return fopen64(pathname, mode);
+	return orig_fopen64(pathname, mode);
 }
 
 int fclose(FILE *fp) {
@@ -225,7 +225,7 @@ int stat64(const char *pathname, struct stat64 *statbuf) {
 	}
 
 	AUTOLOAD_ORIG(stat64);
-	return stat64(pathname, statbuf);
+	return orig_stat64(pathname, statbuf);
 }
 
 int lstat(const char *pathname, struct stat *statbuf) {
@@ -254,5 +254,5 @@ int lstat64(const char *pathname, struct stat64 *statbuf) {
 
 
 	AUTOLOAD_ORIG(lstat64);
-	return lstat64(pathname, statbuf);
+	return orig_lstat64(pathname, statbuf);
 }

@@ -2,10 +2,14 @@
 #include <stdio.h>
 #include <string.h>
 
+#define DEBUG 1
+
 #define DEL_CHAR '\1'
 #define DEL_EOD '\2'
 
 char* canonicalize(const char *pathname, char *buf) {
+	if (DEBUG) fprintf(stderr, "canon: %s\n", pathname);
+
 	if (buf == NULL) {
 		buf = strdup(pathname);
 	} else {
