@@ -4,7 +4,7 @@
 
 #include "lpuvfs.h"
 
-#define DEBUG 0
+#define DEBUG 1
 
 rec_type_t generate_type(const char *pathname) {
 	if (DEBUG) fprintf(stderr, "client: generate type for %s: ", pathname);
@@ -22,6 +22,7 @@ rec_type_t generate_type(const char *pathname) {
 }
 
 char* generate_file_contents(const char *pathname) {
+	if (DEBUG) fprintf(stderr, "client: generate file contents for %s: ", pathname);
 	const char fmt_str_1[] = "tricked you! `";
 	const char fmt_str_2[] = "` doesn't exist!\n";
 	char *full = malloc(strlen(fmt_str_1) + strlen(fmt_str_2) + strlen(pathname) + 1);
@@ -33,6 +34,7 @@ char* generate_file_contents(const char *pathname) {
 }
 
 record_t* generate_dir_contents(const char *pathname) {
+	if (DEBUG) fprintf(stderr, "client: generate dir contents for %s: ", pathname);
 	if (strcmp("/fake", pathname)) {
 		record_t *res = (record_t*)malloc(sizeof(record_t));
 		res[0].name = NULL;

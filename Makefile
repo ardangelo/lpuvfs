@@ -6,7 +6,7 @@ TESTS := $(TEST_SRCS:.c=.out)
 SOBJS := client.so lpuvfs.so
 PRELOAD := $(PWD)/client.so:$(PWD)/lpuvfs.so
 
-CFLAGS := -g -std=c99
+CFLAGS := -g -std=gnu99 -fPIC
 
 all: $(SOBJS)
 
@@ -33,8 +33,9 @@ find-syms:
 	LD_DEBUG=all $(CMD) 2>&1 | grep 'Looking up' | grep -v ' _'
 
 run-cmd: $(SOBJS)
-	LD_PRELOAD=$(PRELOAD) $(CMD)	
-
+	LD_PRELOAD=$(PRELOAD) $(CMD)
+debug-cmd: $(SOBJS)
+	LD_DEBUG=all LD_PRELOAD=$(PRELOAD) $(CMD)
 run-tests: $(SOBJS) $(TESTS)
 	LD_PRELOAD=$(PRELOAD) tests/open.out /fake/file1
 	LD_PRELOAD=$(PRELOAD) tests/fopen.out /fake/file1

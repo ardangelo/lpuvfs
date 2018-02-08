@@ -153,6 +153,10 @@ struct dirent* read_fake_dir(DIR *dirp) {
 	return d;
 }
 
+struct dirent64* read_fake_dir64(DIR *dirp) {
+	return (struct dirent64*)read_fake_dir(dirp);
+}
+
 void rewind_fake_dir(DIR *dirp) {
 	fake_dir_t *fd = (fake_dir_t*)dirp;
 	fd->cur = &fd->dirents[0];
@@ -207,7 +211,7 @@ record_t create_fake_record(const char *pathname) {
 	return res;
 }
 
-int fill_statbuf(struct stat *statbuf, record_t rec) {
+int fill_statbuf64(struct stat64 *statbuf, record_t rec) {
 	mode_t ro_mode = S_IXUSR | S_IRUSR | S_IXGRP | S_IRGRP | S_IXOTH | S_IROTH;
 
 	statbuf->st_ino = 1;
@@ -216,7 +220,7 @@ int fill_statbuf(struct stat *statbuf, record_t rec) {
 	statbuf->st_rdev = 666;
 	statbuf->st_uid = 1001;
 	statbuf->st_gid = 1001;
-	statbuf->st_mtime = 0; 
+	statbuf->st_mtime = 0;
 	statbuf->st_atime = 0;
 	statbuf->st_ctime = 0;
 	if (rec.type == DIR_REC) {
